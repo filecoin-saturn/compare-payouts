@@ -124,7 +124,7 @@ func readPayoutsCSV(fileName string) (map[string]float64, error) {
 			return nil, err
 		}
 		addr := record[0]
-		if !strings.HasPrefix(addr, "f1") {
+		if len(addr) < 32 || !strings.HasPrefix(addr, "f") {
 			continue
 		}
 		fil, err := strconv.ParseFloat(record[1], 64)
