@@ -24,7 +24,8 @@ func deduct(csv1Path, csv2Path string) error {
 		return err
 	}
 
-	var leftover, totalPaid, totalAdjusted float64
+	sumBefore, _ := statsFIL(payouts)
+	var leftover, totalAdjusted float64
 
 	for addr, over := range overpaid {
 		payout, ok := payouts[addr]
@@ -47,7 +48,6 @@ func deduct(csv1Path, csv2Path string) error {
 			totalAdjusted += over.fil
 			over.fil = 0
 			delete(overpaid, addr)
-			totalPaid += payout.fil
 		} else {
 			totalAdjusted += over.fil
 			delete(payouts, addr)
@@ -59,10 +59,13 @@ func deduct(csv1Path, csv2Path string) error {
 		fmt.Println("  remaining overpayment:", over.fil)
 		fmt.Println()
 	}
-	fmt.Println("------------------------------")
-	fmt.Println("Total payouts after deductions:", totalPaid, "FIL")
-	fmt.Println("Total leftover overpayments:", leftover, "FIL")
-	fmt.Println("Total payout ajdustment:", -totalAdjusted, "FIL")
+	sumAfter, _ := statsFIL(payouts)
+	fmt.Println("--------------------------------")
+	fmt.Println("Total payouts before deductions:", sumBefore, "FIL")
+	fmt.Println("Total payout adjustment:        ", -totalAdjusted, "FIL")
+	fmt.Println("Total payouts after deductions: ", sumAfter, "FIL")
+	fmt.Println("Total leftover overpayments:    ", leftover, "FIL")
+
 	fmt.Println()
 
 	adjustedName := strings.TrimSuffix(csv1Path, ".csv") + adjustedSuffix + ".csv"
