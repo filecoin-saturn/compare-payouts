@@ -1,45 +1,22 @@
 package main
 
 import (
+	"cmp"
 	"encoding/csv"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 )
 
-func main() {
-	var (
-		csv1Path   string
-		csv2Path   string
-		top1, top2 int
-	)
-	flag.StringVar(&csv1Path, "f1", "", "first payouts csv file")
-	flag.StringVar(&csv2Path, "f2", "", "second payouts csv file")
-	flag.IntVar(&top1, "top1", 0, "limit file 1 to N records with highest FIL")
-	flag.IntVar(&top2, "top2", 0, "limit file 2 to N records with highest FIL")
-	flag.Parse()
-
-	if csv1Path == "" {
-		fmt.Fprintln(os.Stderr, "missing value for -f1")
-		os.Exit(1)
-	}
-
-	if csv1Path == "" {
-		fmt.Fprintln(os.Stderr, "missing value for -f2")
-		os.Exit(1)
-	}
-
-	err := compare(csv1Path, csv2Path, top1, top2)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+type record struct {
+	fil    float64
+	method string
+	params string
 }
 
 func compare(csv1Path, csv2Path string, top1, top2 int) error {
@@ -105,42 +82,46 @@ func printPayouts(records map[string]float64) {
 	}
 }
 
-func readPayoutsCSV(fileName string) (map[string]float64, error) {
+func readPayoutsCSV(fileName string) (map[string]*record, error) {
 	f, err := os.Open(fileName)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
 
-	recs := make(map[string]float64)
+	records := make(map[string]*record)
 	rdr := csv.NewReader(f)
 
 	for {
-		record, err := rdr.Read()
+		rec, err := rdr.Read()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break
 			}
 			return nil, err
 		}
-		addr := record[0]
+		addr := rec[0]
 		if len(addr) < 32 || !strings.HasPrefix(addr, "f") {
 			continue
 		}
-		fil, err := strconv.ParseFloat(record[1], 64)
+		fil, err := strconv.ParseFloat(rec[1], 64)
 		if err != nil {
-			return nil, fmt.Errorf("cannot parse fil value %q: %s", record[1], err)
+			return nil, fmt.Errorf("cannot parse fil value %q: %s", rec[1], err)
 		}
-		recs[record[0]] = fil
+		records[rec[0]] = &record{
+			fil:    fil,
+			method: rec[2],
+			params: rec[3],
+		}
 	}
 
-	return recs, nil
+	return records, nil
 }
 
-func topPayouts(recs map[string]float64, top int) (map[string]float64, []string) {
+func topPayouts(recs map[string]*record, top int) (map[string]*record, []string) {
 	sorted := sortFIL(recs)
 	if top > 0 && len(recs) > top {
-		topRecs := make(map[string]float64, top)
+		topRecs := make(map[string]*record, top)
 		sorted = sorted[:top]
 		for _, addr := range sorted {
 			topRecs[addr] = recs[addr]
@@ -151,7 +132,7 @@ func topPayouts(recs map[string]float64, top int) (map[string]float64, []string)
 	return recs, sorted
 }
 
-func sortFIL(recs map[string]float64) []string {
+func sortFIL(recs map[string]*record) []string {
 	type kv struct {
 		Key string
 		Val float64
@@ -160,11 +141,11 @@ func sortFIL(recs map[string]float64) []string {
 	sorted := make([]kv, len(recs))
 	var i int
 	for k, v := range recs {
-		sorted[i] = kv{k, v}
+		sorted[i] = kv{k, v.fil}
 		i++
 	}
-	sort.Slice(sorted, func(i, j int) bool {
-		return sorted[i].Val > sorted[j].Val
+	slices.SortFunc(sorted, func(a, b kv) int {
+		return cmp.Compare(a.Val, b.Val)
 	})
 
 	keys := make([]string, len(sorted))
@@ -175,9 +156,9 @@ func sortFIL(recs map[string]float64) []string {
 	return keys
 }
 
-func statsFIL(recs map[string]float64) (sum float64, mean float64) {
+func statsFIL(recs map[string]*record) (sum float64, mean float64) {
 	for _, v := range recs {
-		sum += v
+		sum += v.fil
 	}
 	mean = sum / float64(len(recs))
 	return
