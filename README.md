@@ -79,3 +79,16 @@ Total leftover overpayments:     1276.6633122924998 FIL
 Wrote adjusted payouts to: Saturn-FVM-Payouts-2024-03-adjusted.csv
 Wrote leftover overpayments to: Saturn-FVM-overpaid-2024-02-leftover.csv
 ```
+### Deduct overpayments using previous month's top n payouts as overpayments
+To calculate payout ajdustments for March, using the top 305 recipients as the overpaid amounts, use the following command:
+```
+compare-payouts -deduct -f1 Saturn-FVM-Payouts-2024-03.csv -f2 payouts/Saturn-FVM-Payouts-2024-02.csv -top2 305
+```
+
+This will create two new files, one for the adjusted payouts and one for any leftover overpayment that needs to be applied next month:
+```
+Wrote adjusted payouts to: Saturn-FVM-Payouts-2024-03-adjusted.csv
+Wrote leftover overpayments to: Saturn-FVM-Payouts-2024-02-leftover.csv
+```
+
+If there are no leftover overpayments to deduct next month, then no "leftover" file is created.
