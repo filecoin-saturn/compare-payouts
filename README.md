@@ -70,11 +70,12 @@ Reducing current payout for <redacted>
 ...
 
 --------------------------------
+Applied 226 deductions from f2 to payouts in f1
 Total payouts before deductions: 29388.1022690668 FIL
 Total payout adjustment:         -9507.476867757496 FIL
 Total payouts after deductions:  19880.625401309302 FIL
 Total leftover overpayments:     1276.6633122924998 FIL
 
-Wrote adjusted payouts to: payouts/Saturn-FVM-Payouts-2024-03-adjusted.csv
-Wrote leftover overpayments to: payouts/Saturn-FVM-overpaid-2024-02-leftover.csv
+Wrote adjusted payouts to: Saturn-FVM-Payouts-2024-03-adjusted.csv
+Wrote leftover overpayments to: Saturn-FVM-overpaid-2024-02-leftover.csv
 ```

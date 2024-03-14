@@ -3,8 +3,8 @@ package main
 import (
 	"encoding/csv"
 	"fmt"
+	"math/big"
 	"os"
-	"strconv"
 	"strings"
 )
 
@@ -13,19 +13,23 @@ const (
 	leftoverSuffix = "-leftover"
 )
 
-func deduct(csv1Path, csv2Path string) error {
+func deduct(csv1Path, csv2Path string, top2 int) error {
 	payouts, err := readPayoutsCSV(csv1Path)
 	if err != nil {
 		return err
 	}
+	sumBefore, _ := statsFIL(payouts)
 
 	overpaid, err := readPayoutsCSV(csv2Path)
 	if err != nil {
 		return err
 	}
+	if top2 != 0 {
+		overpaid, _ = topPayouts(overpaid, top2)
+	}
 
-	sumBefore, _ := statsFIL(payouts)
-	var leftover, totalAdjusted float64
+	var leftover, totalAdjusted big.Float
+	var applied int
 
 	for addr, over := range overpaid {
 		payout, ok := payouts[addr]
@@ -34,37 +38,40 @@ func deduct(csv1Path, csv2Path string) error {
 			continue
 		}
 		fmt.Println("Reducing current payout for", addr)
-		fmt.Println("  payout before deduction:", payout.fil)
-		fmt.Println("  overpayment amount:", over.fil)
+		fmt.Println("  payout before deduction:", payout.fil.String())
+		fmt.Println("  overpayment amount:", over.fil.String())
 
-		if over.fil > payout.fil {
-			over.fil -= payout.fil
-			totalAdjusted += payout.fil
-			payout.fil = 0
+		switch over.fil.Cmp(payout.fil) {
+		case 1:
+			over.fil.Sub(over.fil, payout.fil)
+			totalAdjusted.Add(&totalAdjusted, payout.fil)
+			payout.fil = new(big.Float)
 			delete(payouts, addr)
-			leftover += over.fil
-		} else if over.fil < payout.fil {
-			payout.fil -= over.fil
-			totalAdjusted += over.fil
-			over.fil = 0
+			leftover.Add(&leftover, over.fil)
+		case -1:
+			payout.fil.Sub(payout.fil, over.fil)
+			totalAdjusted.Add(&totalAdjusted, over.fil)
+			over.fil = new(big.Float)
 			delete(overpaid, addr)
-		} else {
-			totalAdjusted += over.fil
+		case 0:
+			totalAdjusted.Add(&totalAdjusted, over.fil)
 			delete(payouts, addr)
 			delete(overpaid, addr)
-			payout.fil = 0
-			over.fil = 0
+			payout.fil = new(big.Float)
+			over.fil = new(big.Float)
 		}
 		fmt.Println("  payout after deduction:", payout.fil)
 		fmt.Println("  remaining overpayment:", over.fil)
 		fmt.Println()
+		applied++
 	}
 	sumAfter, _ := statsFIL(payouts)
 	fmt.Println("--------------------------------")
-	fmt.Println("Total payouts before deductions:", sumBefore, "FIL")
-	fmt.Println("Total payout adjustment:        ", -totalAdjusted, "FIL")
-	fmt.Println("Total payouts after deductions: ", sumAfter, "FIL")
-	fmt.Println("Total leftover overpayments:    ", leftover, "FIL")
+	fmt.Println("Applied", applied, "deductions from f2 to payouts in f1")
+	fmt.Println("Total payouts before deductions:", sumBefore.String(), "FIL")
+	fmt.Println("Total payout adjustment:        ", totalAdjusted.Neg(&totalAdjusted).String(), "FIL")
+	fmt.Println("Total payouts after deductions: ", sumAfter.String(), "FIL")
+	fmt.Println("Total leftover overpayments:    ", leftover.String(), "FIL")
 
 	fmt.Println()
 
@@ -104,7 +111,7 @@ func writePayoutsCSV(filePath string, records map[string]*record) error {
 	recStrs := make([]string, 4)
 	for addr, rec := range records {
 		recStrs[0] = addr
-		recStrs[1] = strconv.FormatFloat(rec.fil, 'f', -1, 64)
+		recStrs[1] = rec.fil.String()
 		recStrs[2] = rec.method
 		recStrs[3] = rec.params
 		if err = w.Write(recStrs); err != nil {

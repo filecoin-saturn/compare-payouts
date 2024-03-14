@@ -13,8 +13,8 @@ func main() {
 		opDeduct   bool
 		top1, top2 int
 	)
-	flag.BoolVar(&opDeduct, "deduct", false, "Deduce overpayments in file2 from payouts in file1")
-	flag.StringVar(&csv1Path, "f1", "", "first payouts csv file")
+	flag.BoolVar(&opDeduct, "deduct", false, "Deduct over-payments in file2 from payouts in file1")
+	flag.StringVar(&csv1Path, "f1", "", "first payouts CST file")
 	flag.StringVar(&csv2Path, "f2", "", "second payouts csv file")
 	flag.IntVar(&top1, "top1", 0, "limit file 1 to N records with highest FIL")
 	flag.IntVar(&top2, "top2", 0, "limit file 2 to N records with highest FIL")
@@ -32,11 +32,11 @@ func main() {
 
 	var err error
 	if opDeduct {
-		if top1 != 0 || top2 != 0 {
-			fmt.Fprintln(os.Stderr, "-top1 and -top2 are not available with -deduct")
+		if top1 != 0 {
+			fmt.Fprintln(os.Stderr, "-top1 is not available with -deduct")
 			os.Exit(1)
 		}
-		err = deduct(csv1Path, csv2Path)
+		err = deduct(csv1Path, csv2Path, top2)
 	} else {
 		err = compare(csv1Path, csv2Path, top1, top2)
 	}
