@@ -1,20 +1,19 @@
 package main
 
 import (
-	"cmp"
 	"encoding/csv"
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"os"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 )
 
 type record struct {
-	fil    float64
+	fil    *big.Float
 	method string
 	params string
 }
@@ -57,8 +56,8 @@ func compare(csv1Path, csv2Path string, top1, top2 int) error {
 	fmt.Println("  Filename:", filepath.Base(csv1Path))
 	fmt.Println("  Number of payouts:", len(payouts1))
 	fmt.Println("  Highest FIL:", payouts1[sorted1[0]])
-	fmt.Println("  Average FIL:", mean1)
-	fmt.Println("  Total FIL:", sum1)
+	fmt.Println("  Average FIL:", mean1.String())
+	fmt.Println("  Total FIL:", sum1.String())
 	fmt.Println("  Payouts in file 1 only:", setDiff1)
 	fmt.Println()
 
@@ -67,8 +66,8 @@ func compare(csv1Path, csv2Path string, top1, top2 int) error {
 	fmt.Println("  Filename:", filepath.Base(csv2Path))
 	fmt.Println("  Number of payouts:", len(payouts2))
 	fmt.Println("  Highest FIL:", payouts2[sorted2[0]])
-	fmt.Println("  Average FIL:", mean2)
-	fmt.Println("  Total FIL:", sum2)
+	fmt.Println("  Average FIL:", mean2.String())
+	fmt.Println("  Total FIL:", sum2.String())
 	fmt.Println("  Payouts in file 2 only:", setDiff2)
 	fmt.Println()
 
@@ -104,12 +103,13 @@ func readPayoutsCSV(fileName string) (map[string]*record, error) {
 		if len(addr) < 32 || !strings.HasPrefix(addr, "f") {
 			continue
 		}
-		fil, err := strconv.ParseFloat(rec[1], 64)
+		var fil big.Float
+		_, _, err = fil.Parse(rec[1], 10)
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse fil value %q: %s", rec[1], err)
 		}
 		records[rec[0]] = &record{
-			fil:    fil,
+			fil:    &fil,
 			method: rec[2],
 			params: rec[3],
 		}
@@ -135,7 +135,7 @@ func topPayouts(recs map[string]*record, top int) (map[string]*record, []string)
 func sortFIL(recs map[string]*record) []string {
 	type kv struct {
 		Key string
-		Val float64
+		Val *big.Float
 	}
 
 	sorted := make([]kv, len(recs))
@@ -145,7 +145,7 @@ func sortFIL(recs map[string]*record) []string {
 		i++
 	}
 	slices.SortFunc(sorted, func(a, b kv) int {
-		return cmp.Compare(a.Val, b.Val)
+		return b.Val.Cmp(a.Val)
 	})
 
 	keys := make([]string, len(sorted))
@@ -156,10 +156,12 @@ func sortFIL(recs map[string]*record) []string {
 	return keys
 }
 
-func statsFIL(recs map[string]*record) (sum float64, mean float64) {
+func statsFIL(recs map[string]*record) (*big.Float, *big.Float) {
+	sum := new(big.Float)
 	for _, v := range recs {
-		sum += v.fil
+		sum.Add(sum, v.fil)
 	}
-	mean = sum / float64(len(recs))
-	return
+
+	mean := new(big.Float).Quo(sum, new(big.Float).SetInt64(int64(len(recs))))
+	return sum, mean
 }
