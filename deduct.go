@@ -13,7 +13,7 @@ const (
 	leftoverSuffix = "-leftover"
 )
 
-func deduct(csv1Path, csv2Path string) error {
+func deduct(csv1Path, csv2Path string, top2 int) error {
 	payouts, err := readPayoutsCSV(csv1Path)
 	if err != nil {
 		return err
@@ -23,9 +23,13 @@ func deduct(csv1Path, csv2Path string) error {
 	if err != nil {
 		return err
 	}
+	if top2 != 0 {
+		overpaid, _ = topPayouts(overpaid, top2)
+	}
 
 	sumBefore, _ := statsFIL(payouts)
 	var leftover, totalAdjusted float64
+	var applied int
 
 	for addr, over := range overpaid {
 		payout, ok := payouts[addr]
@@ -58,9 +62,11 @@ func deduct(csv1Path, csv2Path string) error {
 		fmt.Println("  payout after deduction:", payout.fil)
 		fmt.Println("  remaining overpayment:", over.fil)
 		fmt.Println()
+		applied++
 	}
 	sumAfter, _ := statsFIL(payouts)
 	fmt.Println("--------------------------------")
+	fmt.Println("Applied", applied, "deductions from f2 to payouts in f1")
 	fmt.Println("Total payouts before deductions:", sumBefore, "FIL")
 	fmt.Println("Total payout adjustment:        ", -totalAdjusted, "FIL")
 	fmt.Println("Total payouts after deductions: ", sumAfter, "FIL")
