@@ -23,7 +23,7 @@ Usage of compare-payouts:
 ```
 
 ### Compare payouts CSV files
-```shell
+```
 compare-payouts -f1 Saturn-FVM-Payouts-2024-02.csv -f2 Saturn-FVM-Payouts-2024-01.csv 
 Payouts 1 stats:
   Filename: Saturn-FVM-Payouts-2024-02.csv
@@ -45,7 +45,7 @@ Payouts in both files:  <redacted>
 ```
 
 ### Deduct overpayments from payouts
-```shell
+```
 compare-payouts -deduct -f1 Saturn-FVM-Payouts-2024-03.csv -f2 Saturn-FVM-overpaid-2024-02.csv
 
 Reducing current payout for <redacted>
